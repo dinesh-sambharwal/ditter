@@ -1,0 +1,707 @@
+{% extends "base.html" %}
+{% block title %}Administrative Console / Ditter{% endblock %}
+{% block view_title %}Administrative Console{% endblock %}
+{% block content %}
+<div class="admin-container" style="padding: 20px; max-width: 1100px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <div style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600; background: var(--card-bg); padding: 8px 16px; border-radius: 12px; border: 1px solid var(--border-color);">
+            System Operational · {{ total_users }} Users
+        </div>
+        <a href="{{ url_for('index') }}" style="color: var(--primary-color); text-decoration: none; font-weight: 800; font-size: 0.9rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fa-solid fa-arrow-left"></i> Return to Site
+        </a>
+    </div>
+
+    <!-- Tab Navigation -->
+    <div style="display: flex; gap: 8px; margin-bottom: 24px; overflow-x: auto; padding-bottom: 8px; scrollbar-width: none; flex-wrap: nowrap;">
+        <button onclick="showTab('stats')" class="admin-tab active" id="tab-btn-stats" style="padding: 10px 14px; font-size: 0.85rem; flex: 1; min-width: max-content;">
+            <i class="fa-solid fa-chart-line"></i>Insights
+        </button>
+        <button onclick="showTab('reports')" class="admin-tab" id="tab-btn-reports" style="padding: 10px 14px; font-size: 0.85rem; flex: 1; min-width: max-content;">
+            <i class="fa-solid fa-flag"></i>Reports 
+            {% if pending_reports %}<span class="badge" style="padding: 2px 6px; font-size: 0.7rem;">{{ pending_reports|length }}</span>{% endif %}
+        </button>
+        <button onclick="showTab('users')" class="admin-tab" id="tab-btn-users" style="padding: 10px 14px; font-size: 0.85rem; flex: 1; min-width: max-content;">
+            <i class="fa-solid fa-users-gear"></i>Directory
+        </button>
+        <button onclick="showTab('messages')" class="admin-tab" id="tab-btn-messages" style="padding: 10px 14px; font-size: 0.85rem; flex: 1; min-width: max-content;">
+            <i class="fa-solid fa-envelope-open-text"></i>Inquiries
+        </button>
+        <button onclick="showTab('db')" class="admin-tab" id="tab-btn-db" style="padding: 10px 14px; font-size: 0.85rem; flex: 1; min-width: max-content;">
+            <i class="fa-solid fa-database"></i>SQL Console
+        </button>
+    </div>
+
+    <!-- Content Sections -->
+    <div class="admin-tab-content active" id="tab-stats">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px;">
+            <div class="stat-card" onclick="location.href='{{ url_for('admin_dashboard', tab='users') }}'" style="cursor: pointer;">
+                <div class="stat-icon" style="background: rgba(99, 102, 241, 0.15); color: #6366f1;"><i class="fa-solid fa-user-plus"></i></div>
+                <div class="stat-value">{{ total_users }}</div>
+                <div class="stat-label">Total Users</div>
+            </div>
+            <div class="stat-card" onclick="location.href='{{ url_for('admin_dashboard', tab='users', filter='banned') }}'" style="cursor: pointer;">
+                <div class="stat-icon" style="background: rgba(239, 68, 68, 0.15); color: #ef4444;"><i class="fa-solid fa-user-slash"></i></div>
+                <div class="stat-value">{{ banned_users_count }}</div>
+                <div class="stat-label">Banned Users</div>
+            </div>
+            <div class="stat-card" onclick="location.href='{{ url_for('admin_dashboard', tab='users', filter='restricted') }}'" style="cursor: pointer;">
+                <div class="stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;"><i class="fa-solid fa-user-lock"></i></div>
+                <div class="stat-value">{{ restricted_users_count }}</div>
+                <div class="stat-label">Restricted Users</div>
+            </div>
+            <div class="stat-card" onclick="showTab('reports')" style="cursor: pointer;">
+                <div class="stat-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                <div class="stat-value">{{ pending_reports|length }}</div>
+                <div class="stat-label">Pending Reports</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;"><i class="fa-solid fa-comment-dots"></i></div>
+                <div class="stat-value">{{ total_posts }}</div>
+                <div class="stat-label">Total Dits</div>
+            </div>
+        </div>
+
+        <div style="margin-top: 40px; background: var(--card-bg); padding: 30px; border-radius: 24px; border: 1px solid var(--border-color);">
+            <h4 style="margin-top: 0; margin-bottom: 20px; font-weight: 800;">Recent Activity Overview</h4>
+            <p style="color: var(--text-muted);">The administrative panel allows you to monitor site health, respond to user reports, and manage accounts directly. System is currently healthy and all systems are operational.</p>
+        </div>
+    </div>
+
+    <div class="admin-tab-content" id="tab-reports">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            {% for report in pending_reports %}
+            <div class="report-card" style="background: var(--card-bg); border-radius: 20px; border: 1px solid var(--border-color); overflow: hidden; display: flex; flex-direction: column;">
+                <!-- Header with Reporter Info and Dismiss -->
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--border-color); background: rgba(0,0,0,0.01); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <span class="report-badge {{ report.target_type }}" style="background: {% if report.target_type == 'post' %}var(--primary-soft){% elif report.target_type == 'comment' %}rgba(16, 185, 129, 0.1){% else %}rgba(245, 158, 11, 0.1){% endif %}; color: {% if report.target_type == 'post' %}var(--primary-color){% elif report.target_type == 'comment' %}var(--success-color){% else %}var(--warning){% endif %}; padding: 4px 10px; border-radius: 8px; font-weight: 800; font-size: 0.7rem; text-transform: uppercase;">{{ report.target_type }}</span>
+                        <div style="font-size: 0.9rem; color: var(--text-muted); font-weight: 600;">
+                            Flagged by <a href="{{ url_for('user', username=report.reporter.username) }}" style="color: var(--primary-color); text-decoration: none;">@{{ report.reporter.username }}</a>
+                        </div>
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">{{ report.timestamp.strftime('%b %d, %H:%M') }}</div>
+                </div>
+
+                <div style="padding: 24px; display: flex; gap: 24px;">
+                    <!-- Content Area -->
+                    <div style="flex: 1;">
+                        <div style="font-weight: 800; color: #ef4444; margin-bottom: 16px; font-size: 1rem; display: flex; align-items: center; gap: 8px;">
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size: 0.9em;"></i>
+                            {{ report.reason }}
+                        </div>
+                        
+                        <div style="background: var(--bg-color); border-radius: 16px; border: 1px solid var(--border-color); padding: 20px; position: relative; overflow: hidden;">
+                            <div style="position: absolute; top: 0; left: 0; width: 4px; height: 100%; background: var(--border-color);"></div>
+                            
+                            {% if report.target_type == 'post' %}
+                                {% if report.post %}
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                        <img src="{{ report.post.author|character_url or url_for('static', filename='images/default_avatar.png') }}" style="width: 24px; height: 24px; border-radius: 50%;">
+                                        <span style="font-weight: 700; font-size: 0.9rem;">@{{ report.post.author.username }}</span>
+                                        <a href="{{ url_for('view_post', post_id=report.post.id) }}" target="_blank" style="margin-left: auto; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; text-decoration: none;">OPEN DIT <i class="fa-solid fa-external-link" style="font-size: 0.8em;"></i></a>
+                                    </div>
+                                    <div style="font-size: 1rem; line-height: 1.5; color: var(--text-main); margin-bottom: 12px;">{{ report.post.content }}</div>
+                                    {% if report.post.image_url %}
+                                        <img src="{{ url_for('static', filename='uploads/' + report.post.image_url) }}" style="max-width: 100%; border-radius: 12px; margin-bottom: 12px; display: block; border: 1px solid var(--border-color);">
+                                    {% endif %}
+                                {% else %}
+                                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">Post was already deleted.</div>
+                                {% endif %}
+                            {% elif report.target_type == 'comment' %}
+                                {% if report.comment %}
+                                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                                        <img src="{{ report.comment.author|character_url or url_for('static', filename='images/default_avatar.png') }}" style="width: 24px; height: 24px; border-radius: 50%;">
+                                        <span style="font-weight: 700; font-size: 0.9rem;">@{{ report.comment.author.username }}</span>
+                                        <a href="{{ url_for('view_post', post_id=report.comment.post_id) }}#comment-{{ report.comment.id }}" target="_blank" style="margin-left: auto; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; text-decoration: none;">OPEN COMMENT <i class="fa-solid fa-external-link" style="font-size: 0.8em;"></i></a>
+                                    </div>
+                                    <div style="font-size: 1rem; line-height: 1.5; color: var(--text-main);">{{ report.comment.body }}</div>
+                                {% else %}
+                                    <div style="text-align: center; padding: 20px; color: var(--text-muted); font-style: italic;">Comment was already deleted.</div>
+                                {% endif %}
+                            {% elif report.target_type == 'user' %}
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    {% if report.target_user %}
+                                        <img src="{{ report.target_user|character_url or url_for('static', filename='images/default_avatar.png') }}" style="width: 48px; height: 48px; border-radius: 50%; border: 2px solid var(--border-color);">
+                                        <div>
+                                            <div style="font-weight: 800; font-size: 1.1rem;">@{{ report.target_user.username }}</div>
+                                            <div style="font-size: 0.85rem; color: var(--text-muted);">Joined {{ report.target_user.join_date.strftime('%B %Y') }}</div>
+                                        </div>
+                                        <a href="{{ url_for('user', username=report.target_user.username) }}" target="_blank" style="margin-left: auto; color: var(--primary-color); font-size: 0.75rem; font-weight: 700; text-decoration: none;">VIEW PROFILE <i class="fa-solid fa-external-link" style="font-size: 0.8em;"></i></a>
+                                    {% else %}
+                                        <div style="text-align: center; padding: 10px; color: var(--text-muted); font-style: italic; width: 100%;">Account no longer exists.</div>
+                                    {% endif %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- Resolution Area -->
+                    <div style="width: 140px; display: flex; flex-direction: column; gap: 8px;">
+                        <label style="font-size: 0.6rem; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Decision</label>
+                        
+                        <form action="{{ url_for('admin_handle_report', report_id=report.id, action='dismiss') }}" method="post">
+                            <button type="submit" class="admin-btn" style="width: 100%; padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; background: var(--primary-soft); color: var(--primary-color); border: 1px solid var(--primary-color); cursor: pointer; transition: all 0.2s; font-size: 0.75rem;">
+                                <i class="fa-solid fa-check"></i> Safe
+                            </button>
+                        </form>
+
+                        <div style="height: 1px; background: var(--border-color); margin: 2px 0;"></div>
+
+                        {% if report.target_type in ['post', 'comment'] %}
+                        <form action="{{ url_for('admin_handle_report', report_id=report.id, action='delete_content') }}" method="post" style="display: flex; flex-direction: column; gap: 8px;">
+                            <select name="restriction" style="padding: 8px; border-radius: 8px; border: 1px solid var(--border-color); width: 100%; font-size: 0.7rem; background: var(--card-bg); color: var(--text-main); font-weight: 600; cursor: pointer;">
+                                <option value="none">Just Delete</option>
+                                <option value="7">D + 7d</option>
+                                <option value="15">D + 15d</option>
+                                <option value="ban">D + PBan</option>
+                            </select>
+                            <button type="submit" class="admin-btn danger" style="padding: 8px 10px; border-radius: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 700; background: #ef4444; color: white; border: none; box-shadow: 0 4px 10px rgba(239, 68, 68, 0.15); cursor: pointer; transition: all 0.2s; font-size: 0.75rem;">
+                                <i class="fa-solid fa-trash-can"></i> Restrict
+                            </button>
+                        </form>
+                        {% elif report.target_type == 'user' %}
+                        <form action="{{ url_for('admin_handle_report', report_id=report.id, action='ban_user') }}" method="post" onsubmit="return confirm('Ban this user permanently?');">
+                            <button type="submit" class="admin-btn danger" style="width: 100%; padding: 12px; border-radius: 12px; display: flex; align-items: center; justify-content: center; gap: 8px; font-weight: 700; background: #ef4444; color: white; border: none; cursor: pointer;">
+                                <i class="fa-solid fa-ban"></i> Ban Account
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 60px 40px; color: var(--text-muted); background: var(--card-bg); border-radius: 24px; border: 1px dashed var(--border-color);">
+                <i class="fa-regular fa-face-smile" style="font-size: 3rem; margin-bottom: 16px; opacity: 0.4;"></i>
+                <h4 style="margin: 0; font-size: 1.25rem;">Nothing to moderate!</h4>
+                <p style="margin-top: 8px;">All reports have been addressed.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="admin-tab-content" id="tab-users">
+        <div style="margin-bottom: 20px; display: flex; gap: 12px; align-items: center;">
+            <input type="text" id="user-search" placeholder="Search by username or email..." 
+                   style="flex: 1; padding: 14px 20px; border-radius: 16px; border: 1px solid var(--border-color); background: var(--card-bg); color: var(--text-main); font-weight: 600;"
+                   onkeyup="filterUsers()">
+            {% if active_filter %}
+            <div style="background: var(--primary-soft); color: var(--primary-color); padding: 10px 16px; border-radius: 12px; border: 1px solid var(--primary-color); display: flex; align-items: center; gap: 10px; font-weight: 700; white-space: nowrap;">
+                <i class="fa-solid fa-filter"></i>
+                Filtering: {{ active_filter|capitalize }}
+                <a href="{{ url_for('admin_dashboard', tab='users') }}" style="color: var(--primary-color); text-decoration: none; font-size: 1.1rem; border-left: 1px solid var(--primary-color); padding-left: 10px; margin-left: 5px;">
+                    <i class="fa-solid fa-xmark"></i>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+        <div style="background: var(--card-bg); border-radius: 20px; border: 1px solid var(--border-color); overflow: hidden; overflow-x: auto; box-shadow: var(--glass-shadow);">
+            <table class="admin-data-table" style="width: 100%; border-collapse: collapse; text-align: left; min-width: 800px; border: 1px solid var(--border-color);">
+                <thead style="background: var(--primary-soft); border-bottom: 2px solid var(--border-color);">
+                    <tr>
+                        <th style="padding: 14px 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-right: 1px solid var(--border-color); width: 25%;">User</th>
+                        <th style="padding: 14px 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-right: 1px solid var(--border-color); width: 15%;">Status</th>
+                        <th style="padding: 14px 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-right: 1px solid var(--border-color); width: 15%;">Joined</th>
+                        <th style="padding: 14px 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); border-right: 1px solid var(--border-color); width: 15%;">Last Login</th>
+                        <th style="padding: 14px 20px; font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); text-align: center; width: 30%;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="user-table-body">
+                    {% for u in all_users %}
+                    {% set is_temp_banned = u.is_currently_banned and not u.is_banned %}
+                    <tr class="user-row {{ 'banned-row' if u.is_banned }} {{ 'restricted-row' if is_temp_banned }}" 
+                        style="border-bottom: 1px solid var(--border-color); transition: background 0.2s;
+                        {% if u.is_banned %}background: rgba(239, 68, 68, 0.02);
+                        {% elif is_temp_banned %}background: rgba(245, 158, 11, 0.02);{% endif %}">
+                        <td style="padding: 12px 20px; border-right: 1px solid var(--border-color);">
+                            <div style="display: flex; align-items: center; gap: 14px;">
+                                {% set avatar = u|character_url %}
+                                <div style="position: relative;">
+                                    <img src="{{ avatar if avatar else url_for('static', filename='images/default_avatar.png') }}" 
+                                         style="width: 36px; height: 36px; border-radius: 10px; object-fit: cover; border: 1px solid var(--border-color); {{ 'filter: grayscale(1);' if u.is_banned }}">
+                                    {% if u.is_admin %}
+                                        <div style="position: absolute; bottom: -4px; right: -4px; background: var(--primary-color); color: white; width: 16px; height: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 0.6rem; border: 2px solid var(--card-bg);">
+                                            <i class="fa-solid fa-shield"></i>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div style="display: flex; flex-direction: column;">
+                                    <a href="{{ url_for('user', username=u.username) }}" style="font-weight: 800; font-size: 0.95rem; color: {% if u.is_banned %}var(--danger){% elif is_temp_banned %}var(--warning){% else %}var(--text-main){% endif %}; text-decoration: none;">
+                                        @{{ u.username }}
+                                    </a>
+                                    <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">{{ u.email }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td style="padding: 12px 20px; border-right: 1px solid var(--border-color);">
+                            <div style="display: flex; flex-direction: column; gap: 4px;">
+                                {% if u.is_permanently_banned %}
+                                    <span style="background: rgba(239, 68, 68, 0.1); color: #ef4444; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; border: 1px solid rgba(239, 68, 68, 0.2); width: fit-content;">PERMANENT BAN</span>
+                                {% elif u.is_temporarily_restricted %}
+                                    <span style="background: rgba(245, 158, 11, 0.1); color: #f59e0b; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; border: 1px solid rgba(245, 158, 11, 0.2); width: fit-content;">RESTRICTED</span>
+                                    <div style="display: flex; align-items: center; gap: 4px; color: #f59e0b; font-size: 0.65rem; font-weight: 700; font-family: monospace;">
+                                        <i class="fa-solid fa-clock"></i>
+                                        <span class="countdown" data-until="{{ u.banned_until.strftime('%Y-%m-%dT%H:%M:%SZ') }}"></span>
+                                    </div>
+                                {% else %}
+                                    <span style="background: rgba(16, 185, 129, 0.1); color: #10b981; padding: 4px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800; border: 1px solid rgba(16, 185, 129, 0.2); width: fit-content;">ACTIVE</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td style="padding: 12px 20px; border-right: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
+                            {{ u.join_date.strftime('%d %b %Y') }}
+                        </td>
+                        <td style="padding: 12px 20px; border-right: 1px solid var(--border-color); font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">
+                            {% if u.last_login %}
+                                {{ u.last_login.strftime('%d %b, %H:%M') }}
+                            {% else %}
+                                Never
+                            {% endif %}
+                        </td>
+                        <td style="padding: 12px 20px; text-align: center;">
+                            <div style="display: flex; justify-content: center; gap: 8px;">
+                                <form action="{{ url_for('admin_toggle_status', user_id=u.id, status_type='admin') }}" method="post" style="margin: 0;">
+                                    <button type="submit" class="admin-pill-btn {{ 'sec' if u.is_admin else 'pri' }}" title="{{ 'Demote from Admin' if u.is_admin else 'Promote to Admin' }}">
+                                        <i class="fa-solid {{ 'fa-user-gear' if u.is_admin else 'fa-user-shield' }}"></i>
+                                        <span>{{ 'Demote' if u.is_admin else 'Admin' }}</span>
+                                    </button>
+                                </form>
+                                
+                                {% if u.is_temporarily_restricted %}
+                                <form action="{{ url_for('admin_unrestrict_user', user_id=u.id) }}" method="post" style="margin: 0;">
+                                    <button type="submit" class="admin-pill-btn warn" title="Unrestrict User">
+                                        <i class="fa-solid fa-unlock"></i>
+                                        <span>Restore</span>
+                                    </button>
+                                </form>
+                                {% endif %}
+
+                                <form action="{{ url_for('admin_toggle_status', user_id=u.id, status_type='ban') }}" method="post" style="margin: 0;">
+                                    <button type="submit" class="admin-pill-btn {{ 'safe' if u.is_permanently_banned else 'err' }}" title="{{ 'Lift Ban' if u.is_permanently_banned else 'Permanent Ban' }}">
+                                        <i class="fa-solid {{ 'fa-user-check' if u.is_permanently_banned else 'fa-user-slash' }}"></i>
+                                        <span>{{ 'Unban' if u.is_permanently_banned else 'Ban' }}</span>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="admin-tab-content" id="tab-messages">
+        <div style="display: flex; flex-direction: column; gap: 16px;">
+            {% for msg in contact_messages %}
+            <div class="admin-list-item {{ 'unread' if not msg.is_read }}">
+                <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                    <div style="font-weight: 800; font-size: 1.1rem; color: var(--text-main);">{{ msg.subject }}</div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;">{{ msg.timestamp.strftime('%b %d, %H:%M') }}</div>
+                </div>
+                <div style="font-size: 0.9rem; margin-bottom: 12px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fa-solid fa-circle-user" style="color: var(--primary-color);"></i>
+                    <span style="font-weight: 700;">{{ msg.name }}</span> 
+                    <span style="color: var(--text-muted);">({{ msg.email }})</span>
+                </div>
+                <div style="line-height: 1.6; padding: 12px; background: rgba(0,0,0,0.02); border-radius: 12px; border-left: 3px solid var(--primary-color); margin-bottom: 16px;">
+                    {{ msg.message }}
+                </div>
+                <div style="display: flex; gap: 10px;">
+                    {% if not msg.is_read %}
+                    <form action="{{ url_for('admin_handle_contact', msg_id=msg.id, action='read') }}" method="post">
+                        <button type="submit" style="padding: 10px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-weight: 600; background: var(--primary-color); color: white; border: none; box-shadow: 0 4px 15px rgba(0, 123, 255, 0.3); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-envelope-open"></i> Read</button>
+                    </form>
+                    {% else %}
+                    <form action="{{ url_for('admin_handle_contact', msg_id=msg.id, action='unread') }}" method="post">
+                        <button type="submit" style="padding: 10px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-weight: 600; background: var(--card-bg); border: 1px solid var(--border-color); color: var(--text-main); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-envelope"></i> Unread</button>
+                    </form>
+                    {% endif %}
+                    <form action="{{ url_for('admin_handle_contact', msg_id=msg.id, action='delete') }}" method="post" onsubmit="return confirm('Delete message?');">
+                        <button type="submit" style="padding: 10px 16px; border-radius: 10px; display: flex; align-items: center; gap: 8px; font-weight: 700; background: var(--danger); color: white; border: none; box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3); transition: transform 0.2s, box-shadow 0.2s; cursor: pointer; font-size: 0.85rem;"><i class="fa-solid fa-trash-can"></i> Delete</button>
+                    </form>
+                </div>
+            </div>
+            {% else %}
+            <div style="text-align: center; padding: 60px 40px; color: var(--text-muted); background: var(--card-bg); border-radius: 24px;">
+                <p>No messages received yet.</p>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="admin-tab-content" id="tab-db">
+        <div style="background: var(--card-bg); border-radius: 24px; border: 1px solid var(--border-color); padding: 30px; box-shadow: var(--glass-shadow);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; gap: 20px;">
+                <div style="flex: 1;">
+                    <h4 style="margin: 0 0 10px 0; font-weight: 800;">Direct SQL Access</h4>
+                    <p style="margin: 0; font-size: 0.85rem; color: var(--text-muted);">Execute raw SQLite commands. <span style="color: #ef4444; font-weight: 700;">DANGER: Destructive commands take immediate effect.</span></p>
+                </div>
+                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; max-width: 50%;">
+                    <button onclick="prefillQuery('SELECT * FROM user LIMIT 10')" class="admin-btn-small secondary">List Users</button>
+                    <button onclick="prefillQuery('SELECT * FROM post LIMIT 10')" class="admin-btn-small secondary">List Posts</button>
+                    <button onclick="prefillQuery('SELECT name FROM sqlite_master WHERE type=\'table\'')" class="admin-btn-small secondary">List Tables</button>
+                    <button onclick="prefillQuery('PRAGMA table_info(user)')" class="admin-btn-small secondary">User Schema</button>
+                </div>
+            </div>
+
+            <div style="position: relative; margin-bottom: 20px;">
+                <textarea id="sql-query-input" placeholder="Enter SQL query here (e.g., SELECT * FROM user)..." 
+                    style="width: 100%; min-height: 150px; padding: 20px; border-radius: 16px; border: 1px solid var(--border-color); background: #1e1e2e; color: #a78bfa; font-family: 'Fira Code', monospace; font-size: 0.95rem; line-height: 1.6; resize: vertical; outline: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);"></textarea>
+                <button onclick="runSqlQuery()" id="run-sql-btn" 
+                    style="position: absolute; bottom: 15px; right: 15px; padding: 10px 24px; border-radius: 12px; background: var(--primary-color); color: white; border: none; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.4); transition: all 0.2s;">
+                    <i class="fa-solid fa-play"></i> EXECUTE
+                </button>
+            </div>
+
+            <div id="sql-result-container" style="display: none;">
+                <div style="height: 1px; background: var(--border-color); margin: 30px 0;"></div>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                    <h5 style="margin: 0; font-weight: 800; font-size: 1rem;">Query Results</h5>
+                    <div id="sql-result-meta" style="font-size: 0.8rem; color: var(--text-muted); font-weight: 600;"></div>
+                </div>
+                <div id="sql-result-table-wrapper" style="overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <!-- Result table will be injected here -->
+                </div>
+                <div id="sql-message-output" style="display: none; padding: 16px; border-radius: 12px; font-weight: 600; font-size: 0.9rem;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sidebar-left, .sidebar-right {
+        display: none !important;
+    }
+    .app-container {
+        display: block !important;
+        grid-template-columns: 1fr !important;
+    }
+    .main-content {
+        max-width: 1200px !important;
+        margin: 0 auto !important;
+        width: 100%;
+        border: none !important;
+    }
+    .view-header {
+        max-width: 1100px;
+        margin: 0 auto;
+        border-bottom: 1px solid var(--border-color);
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .admin-pill-btn {
+        padding: 6px 14px;
+        border-radius: 50px;
+        font-size: 0.7rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        border: 1px solid var(--border-color);
+        background: var(--card-bg);
+        color: var(--text-muted);
+    }
+    .admin-pill-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .admin-pill-btn.pri { background: var(--primary-soft); color: var(--primary-color); border-color: var(--primary-soft); }
+    .admin-pill-btn.sec { background: var(--primary-color); color: white; border-color: var(--primary-color); }
+    .admin-pill-btn.warn { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+    .admin-pill-btn.err { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.2); }
+    .admin-pill-btn.safe { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+    
+    .admin-container {
+        width: 100%;
+        box-sizing: border-box;
+    }
+    .admin-tab {
+        padding: 12px 20px;
+        border-radius: 14px;
+        border: none;
+        background: var(--card-bg);
+        color: var(--text-muted);
+        font-weight: 700;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        white-space: nowrap;
+        transition: all 0.2s ease;
+        border: 1px solid var(--border-color);
+    }
+    .admin-tab:hover {
+        background: var(--primary-soft);
+        color: var(--primary-color);
+    }
+    .admin-tab.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+        box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3);
+    }
+    .admin-tab .badge {
+        background: #ef4444;
+        color: white;
+        font-size: 0.7rem;
+        padding: 2px 6px;
+        border-radius: 8px;
+    }
+    .admin-tab-content {
+        display: none;
+        animation: fadeIn 0.3s ease;
+    }
+    .admin-tab-content.active {
+        display: block;
+    }
+    .stat-card {
+        background: var(--card-bg);
+        padding: 30px;
+        border-radius: 24px;
+        border: 1px solid var(--border-color);
+        text-align: center;
+        box-shadow: var(--glass-shadow);
+        transition: transform 0.3s ease;
+    }
+    .stat-card:hover { transform: translateY(-5px); }
+    .stat-icon {
+        width: 50px;
+        height: 50px;
+        margin: 0 auto 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 14px;
+        font-size: 1.4rem;
+    }
+    .stat-value { font-size: 2.2rem; font-weight: 800; color: var(--primary-color); }
+    .stat-label { font-weight: 700; color: var(--text-muted); margin-top: 4px; }
+    
+    .admin-list-item {
+        background: var(--card-bg);
+        padding: 24px;
+        border-radius: 20px;
+        border: 1px solid var(--border-color);
+        transition: background 0.2s ease;
+    }
+    .admin-list-item.unread { border-left: 4px solid var(--primary-color); border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+    
+    .report-badge {
+        padding: 4px 10px;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        font-weight: 800;
+        text-transform: uppercase;
+    }
+    .report-badge.post { background: rgba(99, 102, 241, 0.1); color: #6366f1; }
+    .report-badge.comment { background: rgba(16, 185, 129, 0.1); color: #10b981; }
+    .report-badge.user { background: rgba(245, 158, 11, 0.1); color: #f59e0b; }
+    
+    .admin-btn {
+        padding: 10px;
+        border-radius: 10px;
+        font-weight: 700;
+        font-size: 0.9rem;
+        border: none;
+        cursor: pointer;
+        width: 100%;
+        transition: opacity 0.2s;
+    }
+    .admin-btn.secondary { background: var(--bg-color); color: var(--text-main); border: 1px solid var(--border-color); }
+    .admin-btn.danger { background: #ef4444; color: white; }
+    .admin-btn:hover { opacity: 0.9; }
+
+    .admin-btn-small {
+        padding: 6px 12px;
+        border-radius: 8px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        border: none;
+        cursor: pointer;
+        background: var(--primary-color);
+        color: white;
+    }
+    .admin-btn-small.secondary { background: var(--bg-color); color: var(--text-muted); border: 1px solid var(--border-color); }
+    .admin-btn-small.danger { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    .admin-icon-btn {
+        width: 36px;
+        height: 36px;
+        border-radius: 10px;
+        border: 1px solid var(--border-color);
+        background: var(--bg-color);
+        color: var(--text-muted);
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s;
+    }
+    .admin-icon-btn:hover { background: var(--primary-soft); color: var(--primary-color); }
+    .admin-icon-btn.danger:hover { background: rgba(239, 68, 68, 0.1); color: #ef4444; }
+
+    .admin-data-table tbody tr:hover {
+        background: var(--primary-soft) !important;
+        cursor: default;
+    }
+    
+    .admin-data-table th {
+        font-weight: 900;
+        letter-spacing: 1px;
+    }
+
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+
+<script>
+function showTab(tabId) {
+    document.querySelectorAll('.admin-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    document.querySelectorAll('.admin-tab').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById('tab-' + tabId).classList.add('active');
+    document.getElementById('tab-btn-' + tabId).classList.add('active');
+}
+
+// Handle query params for tab and filter
+window.addEventListener('DOMContentLoaded', (event) => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    if (tabParam) {
+        showTab(tabParam);
+    } else {
+        showTab('stats');
+    }
+});
+
+function filterUsers() {
+    let input = document.getElementById('user-search');
+    let filter = input.value.toLowerCase();
+    let rows = document.querySelectorAll('.user-row');
+    
+    rows.forEach(row => {
+        let text = row.innerText.toLowerCase();
+        row.style.display = text.includes(filter) ? '' : 'none';
+    });
+}
+
+function updateCountdowns() {
+    document.querySelectorAll('.countdown').forEach(el => {
+        const until = new Date(el.dataset.until);
+        const now = new Date();
+        const diff = until - now;
+        
+        if (diff <= 0) {
+            el.innerHTML = "Expired";
+            el.closest('.restricted-row')?.classList.remove('restricted-row');
+            return;
+        }
+        
+        const days = Math.floor(diff / 86400000);
+        const hours = Math.floor((diff % 86400000) / 3600000);
+        const mins = Math.floor((diff % 3600000) / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        
+        let timeStr = "";
+        if (days > 0) timeStr += days + "d ";
+        if (hours > 0 || days > 0) timeStr += hours + "h ";
+        if (mins > 0 || hours > 0 || days > 0) timeStr += mins + "m ";
+        timeStr += secs + "s";
+        
+        el.innerHTML = timeStr;
+    });
+}
+
+setInterval(updateCountdowns, 1000);
+updateCountdowns();
+
+function prefillQuery(query) {
+    const input = document.getElementById('sql-query-input');
+    input.value = query;
+    input.focus();
+}
+
+async function runSqlQuery() {
+    const query = document.getElementById('sql-query-input').value;
+    const btn = document.getElementById('run-sql-btn');
+    const container = document.getElementById('sql-result-container');
+    const tableWrapper = document.getElementById('sql-result-table-wrapper');
+    const messageOutput = document.getElementById('sql-message-output');
+    const metaOutput = document.getElementById('sql-result-meta');
+
+    if (!query.trim()) return;
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> RUNNING...';
+    
+    try {
+        const formData = new FormData();
+        formData.append('query', query);
+        
+        const response = await fetch('/admin/sql_query', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        container.style.display = 'block';
+        tableWrapper.innerHTML = '';
+        messageOutput.style.display = 'none';
+        
+        if (result.error) {
+            messageOutput.style.display = 'block';
+            messageOutput.style.background = 'rgba(239, 68, 68, 0.1)';
+            messageOutput.style.color = '#ef4444';
+            messageOutput.style.border = '1px solid rgba(239, 68, 68, 0.2)';
+            messageOutput.textContent = 'ERROR: ' + result.error;
+            metaOutput.textContent = 'Failed';
+        } else if (result.columns && result.data) {
+            metaOutput.textContent = `${result.data.length} rows returned`;
+            
+            if (result.data.length === 0) {
+                tableWrapper.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted); font-style: italic;">No rows returned.</div>';
+            } else {
+                let tableHtml = '<table style="width: 100%; border-collapse: collapse; font-size: 0.85rem; background: var(--bg-color);">';
+                tableHtml += '<thead style="background: var(--card-bg); position: sticky; top: 0; border-bottom: 2px solid var(--border-color);">';
+                tableHtml += '<tr>' + result.columns.map(col => `<th style="padding: 12px 16px; border-right: 1px solid var(--border-color); text-align: left; font-weight: 900; text-transform: uppercase;">${col}</th>`).join('') + '</tr></thead>';
+                tableHtml += '<tbody>';
+                
+                result.data.forEach((row, i) => {
+                    tableHtml += `<tr style="border-bottom: 1px solid var(--border-color); ${i % 2 === 0 ? '' : 'background: rgba(0,0,0,0.01);'}">`;
+                    tableHtml += result.columns.map(col => `<td style="padding: 10px 16px; border-right: 1px solid var(--border-color); color: var(--text-main); font-family: monospace; white-space: nowrap; max-width: 300px; overflow: hidden; text-overflow: ellipsis;" title="${row[col]}">${row[col]}</td>`).join('');
+                    tableHtml += '</tr>';
+                });
+                
+                tableHtml += '</tbody></table>';
+                tableWrapper.innerHTML = tableHtml;
+            }
+        } else {
+            messageOutput.style.display = 'block';
+            messageOutput.style.background = 'rgba(16, 185, 129, 0.1)';
+            messageOutput.style.color = '#10b981';
+            messageOutput.style.border = '1px solid rgba(16, 185, 129, 0.2)';
+            messageOutput.textContent = result.message || 'Success';
+            metaOutput.textContent = 'Done';
+        }
+    } catch (err) {
+        messageOutput.style.display = 'block';
+        messageOutput.style.background = 'rgba(239, 68, 68, 0.1)';
+        messageOutput.style.color = '#ef4444';
+        messageOutput.textContent = 'Network error: ' + err.message;
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-play"></i> EXECUTE';
+    }
+}
+</script>
+{% endblock %}
+
