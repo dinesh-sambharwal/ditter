@@ -136,10 +136,8 @@
                     }}</span>{% endfor %}</div>{% endif %}
         </div>
 
-        <div style="margin: 25px 0 15px 0; display: flex; align-items: center; gap: 12px; cursor: pointer;"
-            onclick="document.getElementById('{{ form.is_private.id }}').click()">
-            {{ form.is_private(style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary-color);")
-            }}
+        <div style="margin: 25px 0 15px 0; display: flex; align-items: center; gap: 12px;">
+            {{ form.is_private(style="width: 20px; height: 20px; cursor: pointer; accent-color: var(--primary-color);") }}
             {{ form.is_private.label(style="margin-bottom: 0; cursor: pointer; font-weight: 600; font-size: 1rem;") }}
         </div>
 
